@@ -1,4 +1,13 @@
-export class User {
+export interface WithPayment {
+  card_holder_name: string,
+  card_number: string,
+  card_expiry_year: number,
+  card_expiry_month: number,
+  card_cvv: string,
+  card_is_expired(): boolean,
+}
+
+export class User implements WithPayment {
   constructor(
     public id: string,
     public first_name: string,
@@ -37,16 +46,12 @@ export class User {
     return this.blocked_at != null;
   }
 
-  public get card_is_expired(): boolean {
+  public card_is_expired(): boolean {
     const now: Date = new Date();
 
     const card_date: Date = new Date(Date.parse(this.card_expiry_year + "-" + (this.card_expiry_month + 1) + "-01"));
 
-    if (now > card_date) {
-      return true;
-    } else {
-      return false;
-    }
+    return now > card_date;
   }
 
   public get is_over_18(): boolean {

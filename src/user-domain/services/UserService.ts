@@ -1,5 +1,5 @@
 import {UserRepository} from "./UserRepository";
-import {User} from "./User";
+import {User, WithPayment} from "../entities/User";
 import {EmailService} from "./EmailService";
 import {PaymentService} from "./PaymentService";
 
@@ -11,21 +11,22 @@ export class UserService {
   ) {
   }
 
+  // Autenticación
   public login(username: string, password: string): boolean {
     const user: User | null = this.userRepository.findByUsernameAndPassword(username, password);
 
-    let can_login: boolean;
     if (user == null) {
-      can_login = false;
-    } else if (user.blocked_at == null) {
-      can_login = false;
-    } else {
-      can_login = true;
+      return false;
     }
 
-    return can_login;
+    if (user.blocked_at == null) {
+      return false;
+    }
+
+    return true;
   }
 
+  // Mailing
   public send_welcome_email(user: User): void {
     if (! this.is_valid_email(user.email)) {
       return;
@@ -34,6 +35,7 @@ export class UserService {
     this.emailService.sendEmail(user.email, "Welcome " + user.full_name + "!", "Welcome to our website.");
   }
 
+  // Mailing
   public send_marketing_email(user: User): void {
     if (! this.is_valid_email(user.email)) {
       return;
@@ -46,7 +48,8 @@ export class UserService {
     this.emailService.sendEmail(user.email, "This month news just for you " + user.full_name + "!", "...");
   }
 
-  public pay_subscription(user: User, amount: number): void {
+  // Payments
+  public pay_subscription(user: WithPayment, amount: number): void {
     this.paymentService.pay_amount(
       user.card_number,
       user.card_expiry_month + "/" + user.card_expiry_year,
@@ -58,5 +61,9 @@ export class UserService {
 
   private is_valid_email(email: string): boolean {
     return email.includes("@");
+  }
+
+  public find_by_id(userId: string): User | null {
+    return this.userRepository.findById(userId);
   }
 }

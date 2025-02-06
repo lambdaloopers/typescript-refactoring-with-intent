@@ -1,35 +1,25 @@
-import { Service } from "typedi";
-import { CommandStatus } from "../command/Command";
-import { CommandRepository } from "../command/CommandRepository";
-import { CommandResponseExpired } from "../commandResponse/CommandResponse";
+import {Service} from "typedi";
+import {Command, CommandStatus} from "../command/Command";
+import {CommandResponseExpired} from "../commandResponse/CommandResponse";
+import {CommandResponseHandler} from "./CommandResponseHandler";
 
 @Service()
-export class CommandResponseExpiredHandler {
-  constructor(private readonly commandRepository: CommandRepository) {}
+export class CommandResponseExpiredHandler extends CommandResponseHandler {
 
-  public async handle(commandResponse: CommandResponseExpired): Promise<void> {
-    const command = await this.commandRepository.findByCommandId(
-      commandResponse.id,
-    );
+  protected getCommandPayload(commandResponse: CommandResponseExpired, command: Command): Partial<Command> {
+    return {
+      status: CommandStatus.FINISHED,
+      startedAt:
+        command.startedAt ??
+        new Date(commandResponse.payloadMessage.expiredAt),
+      endedAt: new Date(commandResponse.payloadMessage.expiredAt),
+    };
+  }
 
-    if (!command) {
-      return;
-    }
-
-    if (
-      [
-        CommandStatus.PENDING,
-        CommandStatus.SCHEDULED,
-        CommandStatus.IN_PROGRESS,
-      ].includes(command.status as CommandStatus)
-    ) {
-      await this.commandRepository.updateByCommandId(commandResponse.id, {
-        status: CommandStatus.FINISHED,
-        startedAt:
-          command.startedAt ??
-          new Date(commandResponse.payloadMessage.expiredAt),
-        endedAt: new Date(commandResponse.payloadMessage.expiredAt),
-      });
-    }
+  protected statusIsValid(status: CommandStatus): boolean {
+    return [
+      CommandStatus.PENDING,
+      CommandStatus.IN_PROGRESS,
+    ].includes(status)
   }
 }

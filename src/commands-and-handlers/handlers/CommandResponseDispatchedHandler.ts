@@ -1,32 +1,21 @@
-import { Service } from "typedi";
-import { CommandResponseDispatched } from "../commandResponse/CommandResponse";
-import { CommandRepository } from "../command/CommandRepository";
-import { CommandStatus } from "../command/Command";
+import {Service} from "typedi";
+import {CommandResponseDispatched} from "../commandResponse/CommandResponse";
+import {Command, CommandStatus} from "../command/Command";
+import {CommandResponseHandler} from "./CommandResponseHandler";
 
 @Service()
-export class CommandResponseDispatchedHandler {
-  constructor(private readonly commandRepository: CommandRepository) {}
+export class CommandResponseDispatchedHandler extends CommandResponseHandler {
 
-  public async handle(
-    commandResponse: CommandResponseDispatched,
-  ): Promise<void> {
-    const command = await this.commandRepository.findByCommandId(
-      commandResponse.id,
-    );
+  protected getCommandPayload(commandResponse: CommandResponseDispatched, command: Command): Partial<Command> {
+    return {
+      status: CommandStatus.IN_PROGRESS,
+      startedAt: new Date(commandResponse.payloadMessage.dispatchedAt),
+    };
+  }
 
-    if (!command) {
-      return;
-    }
-
-    if (
-      [CommandStatus.PENDING, CommandStatus.SCHEDULED].includes(
-        command.status as CommandStatus,
-      )
-    ) {
-      await this.commandRepository.updateByCommandId(commandResponse.id, {
-        status: CommandStatus.IN_PROGRESS,
-        startedAt: new Date(commandResponse.payloadMessage.dispatchedAt),
-      });
-    }
+  protected statusIsValid(status: CommandStatus): boolean {
+    return [
+      CommandStatus.SCHEDULED,
+    ].includes(status)
   }
 }

@@ -1,35 +1,24 @@
-import { Service } from "typedi";
-import { CommandResponseRejected } from "../commandResponse/CommandResponse";
-import { CommandStatus } from "../command/Command";
-import { CommandRepository } from "../command/CommandRepository";
+import {Service} from "typedi";
+import {CommandResponseRejected} from "../commandResponse/CommandResponse";
+import {Command, CommandStatus} from "../command/Command";
+import {CommandResponseHandler} from "./CommandResponseHandler";
 
 @Service()
-export class CommandResponseRejectedHandler {
-  constructor(private readonly commandRepository: CommandRepository) {}
+export class CommandResponseRejectedHandler extends CommandResponseHandler {
 
-  public async handle(commandResponse: CommandResponseRejected): Promise<void> {
-    const command = await this.commandRepository.findByCommandId(
-      commandResponse.id,
-    );
+  protected getCommandPayload(commandResponse: CommandResponseRejected, command: Command): Partial<Command> {
+    return {
+      status: CommandStatus.FINISHED,
+      startedAt:
+        command.startedAt ??
+        new Date(commandResponse.payloadMessage.rejectedAt),
+      endedAt: new Date(commandResponse.payloadMessage.rejectedAt),
+    };
+  }
 
-    if (!command) {
-      return;
-    }
-
-    if (
-      [
-        CommandStatus.PENDING,
-        CommandStatus.SCHEDULED,
-        CommandStatus.IN_PROGRESS,
-      ].includes(command.status as CommandStatus)
-    ) {
-      await this.commandRepository.updateByCommandId(commandResponse.id, {
-        status: CommandStatus.FINISHED,
-        startedAt:
-          command.startedAt ??
-          new Date(commandResponse.payloadMessage.rejectedAt),
-        endedAt: new Date(commandResponse.payloadMessage.rejectedAt),
-      });
-    }
+  protected statusIsValid(status: CommandStatus): boolean {
+    return [
+      CommandStatus.SCHEDULED,
+    ].includes(status)
   }
 }
